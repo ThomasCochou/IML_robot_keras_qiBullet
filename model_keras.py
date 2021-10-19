@@ -72,7 +72,7 @@ for data in raw_data :
    it = datagen.flow(sample, batch_size=1)
 
    # generate samples and plot
-   for i in range(100):
+   for i in range(50):
       # generate batch of images
       batch = it.next()
 
@@ -119,9 +119,11 @@ model.compile(optimizer='adam',
 
 model.summary()
 
-history_train = model.fit(X_train, y_train, epochs=12)
+history_train = model.fit(X_train, y_train, epochs=7)
 
 model.evaluate(X_test,  y_test, verbose=2)
+
+model.save('model_keras')
 
 
 
