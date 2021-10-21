@@ -72,7 +72,7 @@ for data in raw_data :
    it = datagen.flow(sample, batch_size=1)
 
    # generate samples and plot
-   for i in range(50):
+   for i in range(100):
       # generate batch of images
       batch = it.next()
 
@@ -119,9 +119,9 @@ model.compile(optimizer='adam',
 
 model.summary()
 
-history_train = model.fit(X_train, y_train, epochs=7)
+history_train = model.fit(X_train, y_train, epochs=8, validation_data=(X_test,  y_test))
 
-model.evaluate(X_test,  y_test, verbose=2)
+# model.evaluate(X_test,  y_test, verbose=2)
 
 model.save('model_keras')
 
@@ -132,12 +132,14 @@ model.save('model_keras')
 #######################################################
 
 plt.plot(history_train.history['accuracy'])
+plt.plot(history_train.history['val_accuracy'])
 plt.ylabel('accuracy')
 plt.xlabel('epoch')
 plt.legend(['train', 'test'], loc='upper left')
 plt.show()
 
 plt.plot(history_train.history['loss'])
+plt.plot(history_train.history['val_loss'])
 plt.title('model loss')
 plt.ylabel('loss')
 plt.xlabel('epoch')
@@ -184,7 +186,7 @@ for i in range(6):
 
    plt.imshow(numpy.fliplr(data_to_guess[i]))
 
-   if(y_pred[i][0] >= 0.5):
+   if(y_pred[i][0] >= y_pred[i][1]):
       plt.title("zemmour p=" + str(y_pred[i][0]))
    else:
       plt.title("chalamet p=" + str(y_pred[i][1]))

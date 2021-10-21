@@ -6,19 +6,24 @@ from tensorflow.keras import models
 import numpy
 from PIL import Image
 import os,glob
+import time
 import random
 
-def model_prediction(img) :
-	(x, y, w, h) = face
+def model_prediction(img,x, y, w, h) :
 	cropedImg = img[y+2:y+h-2, x+2:x+w-2]
 	cropedImg = cv2.resize(cropedImg, (300, 300), interpolation = cv2.INTER_AREA)
 	cropedImg = numpy.asarray(cropedImg)
 	cropedImg = numpy.expand_dims(cropedImg, 0)
+
+	cropedImg = cropedImg/ 255.0
+
 	y_pred=model.predict(cropedImg)
 
 	prediction_string = ""
 
-	if(y_pred[0][0] >= 0.5):
+	print(y_pred)
+
+	if(y_pred[0][0] >= y_pred[0][1]):
 		prediction_string = "zemmour p=" + str(y_pred[0][0])
 	else:
 		prediction_string = "chalamet p=" + str(y_pred[0][1])
@@ -55,18 +60,22 @@ for images in images_path :
 # create pictures
 #######################################################
 
-random_id = random.randint(0, 5)
+random_id1 = random.randint(0, 2)
+random_id2 = random.randint(3, 5)
 
-texture = p.loadTexture("./pictures_sim/texture_"+str(random_id)+".jpg")
+texture_1 = p.loadTexture("./pictures_sim/texture_"+str(random_id1)+".jpg")
+texture_2 = p.loadTexture("./pictures_sim/texture_"+str(random_id2)+".jpg")
 
 p.connect(p.DIRECT)
-picture_visual = p.createVisualShape(p.GEOM_BOX, halfExtents=[1,0.01,1])
+picture_visual1 = p.createVisualShape(p.GEOM_BOX, halfExtents=[1,0.01,1])
+picture_visual2 = p.createVisualShape(p.GEOM_BOX, halfExtents=[1,0.01,1])
 
+picture1 = p.createMultiBody(baseVisualShapeIndex=picture_visual1, basePosition = [5, 1.5, 1], baseOrientation = [1,1,0,0])
+picture2 = p.createMultiBody(baseVisualShapeIndex=picture_visual2, basePosition = [5, -1.5, 1], baseOrientation = [1,1,0,0])
 
+p.changeVisualShape(picture_visual1, -1, textureUniqueId=texture_1)
+p.changeVisualShape(picture_visual2, -1, textureUniqueId=texture_2)
 
-picture = p.createMultiBody(baseVisualShapeIndex=picture_visual, basePosition = [5, 0, 1], baseOrientation = [1,1,0,0])
-
-p.changeVisualShape(picture_visual, -1, textureUniqueId=texture)
 
 #######################################################
 # create robot
@@ -77,6 +86,8 @@ client_id,
 spawn_ground_plane=True)
 
 handle = pepper.subscribeCamera(PepperVirtual.ID_CAMERA_TOP)
+
+
 
 
 #######################################################
@@ -91,6 +102,8 @@ model = models.load_model('model_keras')
 # thread
 #######################################################
 
+prediction_string = ""
+
 try:
 	while True:
 
@@ -101,13 +114,14 @@ try:
 
 		if(len(detected_faces) > 0) :
 
-			i = 0
 			for face in detected_faces :
-				i += 1
+
 				(x, y, w, h) = face
 				cv2.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), thickness = 2)
-				prediction_string = model_prediction(img)
-				cv2.putText(img, prediction_string, (x, y-12),  cv2.FONT_HERSHEY_SIMPLEX,  0.4,(0, 0, 255),1)
+
+				prediction_string = model_prediction(img, x, y, w, h)
+				time.sleep(1)
+				cv2.putText(img, prediction_string, (x, y-12),  cv2.FONT_HERSHEY_SIMPLEX,  0.4,(0, 255, 0),1)
 
 		cv2.imshow("top camera", img)
 		cv2.waitKey(1)
