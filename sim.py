@@ -8,6 +8,7 @@ from PIL import Image
 import os,glob
 import time
 import random
+import sys
 
 def model_prediction(img,x, y, w, h) :
 	cropedImg = img[y+2:y+h-2, x+2:x+w-2]
@@ -20,8 +21,6 @@ def model_prediction(img,x, y, w, h) :
 	y_pred=model.predict(cropedImg)
 
 	prediction_string = ""
-
-	print(y_pred)
 
 	if(y_pred[0][0] >= y_pred[0][1]):
 		prediction_string = "zemmour p=" + str(y_pred[0][0])
@@ -63,6 +62,12 @@ for images in images_path :
 random_id1 = random.randint(0, 2)
 random_id2 = random.randint(3, 5)
 
+random_x1 = random.randint(5, 9)
+random_x2 = random.randint(5, 9)
+
+random_y1 = random.randint(1, 4)
+random_y2 = random.randint(1, 4)
+
 texture_1 = p.loadTexture("./pictures_sim/texture_"+str(random_id1)+".jpg")
 texture_2 = p.loadTexture("./pictures_sim/texture_"+str(random_id2)+".jpg")
 
@@ -70,8 +75,8 @@ p.connect(p.DIRECT)
 picture_visual1 = p.createVisualShape(p.GEOM_BOX, halfExtents=[1,0.01,1])
 picture_visual2 = p.createVisualShape(p.GEOM_BOX, halfExtents=[1,0.01,1])
 
-picture1 = p.createMultiBody(baseVisualShapeIndex=picture_visual1, basePosition = [5, 1.5, 1], baseOrientation = [1,1,0,0])
-picture2 = p.createMultiBody(baseVisualShapeIndex=picture_visual2, basePosition = [5, -1.5, 1], baseOrientation = [1,1,0,0])
+picture1 = p.createMultiBody(baseVisualShapeIndex=picture_visual1, basePosition = [random_x1, random_y1, 1], baseOrientation = [1,1,0,0])
+picture2 = p.createMultiBody(baseVisualShapeIndex=picture_visual2, basePosition = [random_x2, -random_y2, 1], baseOrientation = [1,1,0,0])
 
 p.changeVisualShape(picture_visual1, -1, textureUniqueId=texture_1)
 p.changeVisualShape(picture_visual2, -1, textureUniqueId=texture_2)
@@ -102,29 +107,64 @@ model = models.load_model('model_keras')
 # thread
 #######################################################
 
+if 2 <= len(sys.argv) :
+	if sys.argv[1] == "zemmour" :
+		search_for = sys.argv[1]
+	else :
+		search_for = "chalamet"
+else :
+	search_for = "chalamet"
+
 prediction_string = ""
+
+img = pepper.getCameraFrame(handle)
+
+state = "detection"
+
+direction = "none"
 
 try:
 	while True:
 
 		img = pepper.getCameraFrame(handle)
 		
+		if state == "detection" :
+			detected_faces = face_cascade.detectMultiScale(image=img, scaleFactor=1.3, minNeighbors=6)  #paramètres à modifier
 
-		detected_faces = face_cascade.detectMultiScale(image=img, scaleFactor=1.3, minNeighbors=6)  #paramètres à modifier
+			if(len(detected_faces) > 0) :
 
-		if(len(detected_faces) > 0) :
+				for face in detected_faces :
 
-			for face in detected_faces :
+					(x, y, w, h) = face
+					cv2.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), thickness = 2)
 
-				(x, y, w, h) = face
-				cv2.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), thickness = 2)
+					prediction_string = model_prediction(img, x, y, w, h)
 
-				prediction_string = model_prediction(img, x, y, w, h)
-				time.sleep(1)
-				cv2.putText(img, prediction_string, (x, y-12),  cv2.FONT_HERSHEY_SIMPLEX,  0.4,(0, 255, 0),1)
+					if prediction_string.split(" ")[0] == search_for :
+						if x-w/2 < 140 :
+							direction = "left"
+						if x+w/2 > 180 :
+							direction = "right"
+						else :
+							direction = "center"
+						state = "move"
 
-		cv2.imshow("top camera", img)
-		cv2.waitKey(1)
+					cv2.putText(img, prediction_string, (x, y-12),  cv2.FONT_HERSHEY_SIMPLEX,  0.4,(0, 255, 0),1)
+
+			cv2.imshow("where is "+search_for+" ?", img)
+			cv2.waitKey(1)
+			time.sleep(1)
+
+		if state == "move" :
+			if direction != "none" :
+				if direction == "left" :
+					pepper.moveTo(0,0,0.4)
+				if direction == "right" :
+					pepper.moveTo(0,0,-0.4)
+				pepper.moveTo(1,0,0)
+				state = "detection"
+
+		
 
 
 except KeyboardInterrupt:
